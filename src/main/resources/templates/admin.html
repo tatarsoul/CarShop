@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<th:block th:replace="fragments/header :: commonHead"></th:block>
+
+<body>
+<div class="navigation-bar">
+    <nav>
+        <ul class="nav nav-tabs" id="Tabs" role="tablist">
+            <li class="nav-item"><a th:href="@{/}" class="nav-link" role="tab">
+                <i class="bi bi-card-list"></i>
+                Главная страница
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/dealershops}" class="nav-link" aria-selected="false" role="tab">
+                <i class="bi bi-buildings"></i>
+                Магазины
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/carbrand_plans}" class="nav-link" aria-selected="false" role="tab">
+                <i class="bi bi-car-front"></i>
+                Марка автомобиля
+            </a>
+            </li>
+            <li sec:authorize="hasRole('ADMIN')" class="nav-item"><a th:href="@{/admin}" class="nav-link active"
+                                                                     aria-selected="true" role="tab">
+                <i class="bi bi-gear"></i>
+                Админ Панель
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/login}" class="nav-link" aria-selected="false" role="tab">Выйти</a></li>
+        </ul>
+    </nav>
+</div>
+<h1>Админ панель</h1>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="search-bar">
+            <form th:action="@{/admin}" class="form-inline" style="display: flex; justify-content: center;">
+                <input type="text" class="search-bar input" name="keyword" id="keyword" size="50" th:value="${keyword}"
+                       placeholder="Поиск..." >
+                <button type="submit" class="search-bar button"><i class="bi bi-search me-2"></i>Поиск</button>
+                <button type="button" class="search-bar button" onclick="clearSearch()"><i class="bi bi-stars me-2"></i>Очистить</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <!-- Навигация вкладок -->
+    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" role="tab"
+                    aria-controls="logs" aria-selected="true">
+                <i class="bi bi-archive"></i>
+                Логи
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" role="tab"
+                    aria-controls="users" aria-selected="false">
+                <i class="bi bi-people"></i>
+                Пользователи
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="statistics-tab" data-bs-toggle="tab" data-bs-target="#statistics" role="tab"
+                    aria-controls="statistics" aria-selected="false">
+                <i class="bi bi-bar-chart"></i>
+                Статистика
+            </button>
+        </li>
+    </ul>
+
+    <!-- Содержимое вкладок -->
+    <div class="tab-content mt-3">
+        <!-- Логи -->
+        <div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
+            <table id="CarTable" class="table">
+                <thead>
+                <tr>
+                    <th>
+                        <i class="bi bi-code"></i>
+                        Тип изменения
+                    </th>
+                    <th>
+                        <i class="bi bi-calendar4-event"></i>
+                        Дата изменения
+                    </th>
+                    <th>
+                        <i class="bi bi-journal"></i>
+                        Старое значение
+                    </th>
+                    <th>
+                        <i class="bi bi-journal-text"></i>
+                        Новое значение
+                    </th>
+                    <th>
+                        <i class="bi bi-person"></i>
+                        Пользователь
+                    </th>
+                    <th>
+                        <i class="bi bi-buildings"></i>
+                        ID магазина
+                    </th>
+                </tr>
+                </thead>
+                <tbody id="LogTableBody">
+                <tr th:each="log : ${carbrandLogs}">
+                    <td th:text="${log.change_type}"></td>
+                    <td th:text="${log.change_date}"></td>
+                    <td>
+                        <i th:if="${log.old_value == null}" class="bi bi-dash"></i>
+                        <span th:unless="${log.old_value == null}" th:text="${log.old_value}"></span>
+                    </td>
+                    <td>
+                        <i th:if="${log.new_value == null}" class="bi bi-dash"></i>
+                        <span th:unless="${log.new_value == null}" th:text="${log.new_value}"></span>
+                    </td>
+                    <td class="text-center" th:text="${log.user.login}"></td>
+                    <td>
+                        <i th:if="${log.carbrand == null}" class="bi bi-dash"></i>
+                        <span th:unless="${log.carbrand == null}" th:text="${log.carbrand.id}"></span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="counter-container">
+                <p id="rowCounter" style="font-size: 14px; color: #333333;"></p>
+            </div>
+            <div class="pagination-add-container">
+                <div id="pagination" class="pagination-container"></div>
+            </div>
+        </div>
+
+        <!-- Пользователи -->
+        <div class="tab-pane fade" id="users" role="tabpanel" aria-labelledby="users-tab">
+            <h3>Пользователи</h3>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>
+                        <i class="bi bi-person-badge"></i>
+                        Имя
+                    </th>
+                    <th>
+                        <i class="bi bi-person"></i>
+                        Логин
+                    </th>
+                    <th>
+                        <i class="bi bi-envelope"></i>
+                        Email
+                    </th>
+                    <th>
+                        <i class="bi bi-person-gear"></i>
+                        Роль
+                    </th>
+                    <th>
+                        <i class="bi bi-gear"></i>
+                        Действия
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}">
+                    <td th:text="${user.name}"></td>
+                    <td th:text="${user.login}"></td>
+                    <td th:text="${user.email}"></td>
+                    <td th:text="${user.role.name}"></td>
+                    <td>
+                        <button
+                                type="button"
+                                class="btn action-btn edit-btn"
+                                data-bs-toggle="modal" data-bs-target="#UserModal"
+                                th:data-id="${user.id}"
+                                th:data-name="${user.name}"
+                                th:data-login="${user.login}"
+                                th:data-email="${user.email}"
+                                th:data-role-name="${user.role.name}">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                        <a class="btn action-btn delete-btn"
+                           th:href="@{admin/delete/{id}(id=${user.id})}">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Статистика -->
+        <div class="tab-pane fade" id="statistics" role="tabpanel" aria-labelledby="statistics-tab">
+            <h3>Статистика</h3>
+            <p><i class="bi bi-card-list me-2"></i><strong>Общее количество записей:</strong> <span th:text="${totalCarbrands}"
+                                                                                             class="stat-value"></span>
+            </p>
+            <p><i class="bi bi-buildings me-2"></i><strong>Кол-во компаний:</strong> <span th:text="${totalDealershops}"
+                                                                                       class="stat-value"></span></p>
+            <p><i class="bi bi-car-front me-2"></i><strong>Кол-во автомобилей:</strong> <span th:text="${totalCarbrandPlans}"
+                                                                                         class="stat-value"></span></p>
+
+            <!-- Навигационная панель -->
+            <ul class="nav nav-tabs mb-3" id="statisticsTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link" id="companies-tab" data-bs-toggle="tab"
+                            data-bs-target="#companies" type="button" role="tab"
+                            aria-controls="companies" aria-selected="true">Авто по Дил.Центрам
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="plans-tab" data-bs-toggle="tab"
+                            data-bs-target="#plans" type="button" role="tab"
+                            aria-controls="plans" aria-selected="false">Авто по Маркам
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Содержимое вкладок -->
+            <div class="tab-content">
+                <!-- Лицензии по компаниям -->
+                <div class="tab-pane fade" id="companies" role="tabpanel" aria-labelledby="companies-tab">
+                    <div class="table-container"
+                         style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                        <div style="flex: 0.5; margin-right: 10px;">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>
+                                        <i class="bi bi-buildings me-2"></i>
+                                        Компания
+                                    </th>
+                                    <th>
+                                        <i class="bi bi-card-list"></i>
+                                        Кол-во авто
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="entry : ${carbrandsByDealershops}">
+                                    <td th:text="${entry[0]}"></td>
+                                    <td th:text="${entry[1]}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Диаграмма -->
+                        <div class="statistics-container" style="flex: 0.5; margin-right: 10px;">
+                            <canvas id="licenseChart" style="max-width: 300px; max-height: 150px"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="plans" role="tabpanel" aria-labelledby="plans-tab">
+                    <div class="table-container"
+                         style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                        <div style="flex: 0.5; margin-right: 10px;">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>
+                                        <i class="bi bi-car-front me-2"></i>
+                                        Марки авто
+                                    </th>
+                                    <th>
+                                        <i class="bi bi-card-list"></i>
+                                        Кол-во авто
+                                    </th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="entry : ${carbrandsByPlans}">
+                                    <td th:text="${entry[0]}"></td>
+                                    <td th:text="${entry[1]}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="statistics-container" style="flex: 0.5; margin-right: 10px;">
+                            <canvas id="plansChart" style="max-width: 300px; max-height: 150px"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Модальное окно для добавления/редактирования -->
+<div class="modal fade" id="UserModal" tabindex="-1" aria-labelledby="LicenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form th:action="@{/admin/save}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="LicenseModalLabel">Редактировать пользователя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="UserName" class="form-label"><i class="bi bi-person-badge me-2"></i>Имя</label>
+                        <input type="text" class="form-control" id="UserName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="UserLogin" class="form-label"><i class="bi bi-person me-2"></i>Логин</label>
+                        <input type="text" class="form-control" id="UserLogin" name="login" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="UserEmail" class="form-label"><i class="bi bi-envelope me-2"></i>E-Mail</label>
+                        <input type="email" class="form-control" id="UserEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="UserRole" class="form-label"><i class="bi bi-person-gear me-2"></i>Роль</label>
+                        <select class="form-select" id="UserRole" name="roleId" required>
+                            <option value="" disabled selected>Выберите роль</option>
+                            <option th:each=" role: ${roles}" th:value="${role.id}"
+                                    th:text="${role.name}"></option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="id" id="UserId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script th:inline="javascript">
+    const licensesByCompanies = /*[[${licensesByCompanies}]]*/ [];
+    const licensesByPlans = /*[[${licensesByPlans}]]*/ [];
+    console.log("Лицензии по компаниям:", licensesByCompanies);
+    console.log("Лицензии по планам:", licensesByPlans);
+    let editButtons = document.querySelectorAll('button[data-bs-toggle="modal"][data-bs-target="#UserModal"]');
+    editButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const userId = button.getAttribute('data-id');
+            const userName = button.getAttribute('data-name');
+            const userLogin = button.getAttribute('data-login');
+            const userEmail = button.getAttribute('data-email');
+            const userRole = button.getAttribute('data-role-name');
+
+            document.getElementById('UserId').value = userId;
+            document.getElementById('UserName').value = userName;
+            document.getElementById('UserLogin').value = userLogin;
+            document.getElementById('UserEmail').value = userEmail;
+
+            // Установить роль
+            const roleSelect = document.getElementById('UserRole');
+            [...roleSelect.options].forEach(option => {
+                option.selected = option.text === userRole;
+            });
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const rowsPerPage = 5; // Количество строк на страницу
+        const tableBody = document.getElementById("LogTableBody");
+        const pagination = document.getElementById("pagination");
+        const rows = Array.from(tableBody.querySelectorAll("tr"));
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+        function displayPage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+
+            rows.forEach((row, index) => {
+                row.style.display = index >= start && index < end ? "" : "none";
+            });
+
+            // Обновление активной кнопки
+            Array.from(pagination.children).forEach((button, index) => {
+                button.classList.toggle("active", index === page - 1);
+            });
+        }
+
+        function createPaginationButtons() {
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement("button");
+                button.textContent = i;
+                button.addEventListener("click", () => displayPage(i));
+                pagination.appendChild(button);
+            }
+        }
+
+        createPaginationButtons();
+        displayPage(1); // Показать первую страницу
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        function createDoughnutChart(canvasId, labels, data) {
+            new Chart(document.getElementById(canvasId), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(255, 159, 64, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            });
+        }
+
+        function getTableData(tableSelector) {
+            const table = document.querySelector(tableSelector);
+            const labels = [];
+            const data = [];
+
+            table.querySelectorAll('tbody tr').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                labels.push(cells[0].innerText.trim());
+                data.push(parseInt(cells[1].innerText.trim(), 10));
+            });
+
+            return {labels, data};
+        }
+
+        let companiesChartRendered = false;
+        let plansChartRendered = false;
+
+        function renderCompaniesChart() {
+            if (!companiesChartRendered) {
+                const companiesData = getTableData('#companies table');
+                createDoughnutChart('licenseChart', companiesData.labels, companiesData.data);
+                companiesChartRendered = true;
+            }
+        }
+
+        function renderPlansChart() {
+            if (!plansChartRendered) {
+                const plansData = getTableData('#plans table');
+                createDoughnutChart('plansChart', plansData.labels, plansData.data);
+                plansChartRendered = true;
+            }
+        }
+
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function (event) {
+                const targetId = event.target.getAttribute('data-bs-target');
+
+                if (targetId === '#companies') {
+                    renderCompaniesChart();
+                }
+
+                if (targetId === '#plans') {
+                    renderPlansChart();
+                }
+            });
+        });
+    });
+    function clearSearch() {
+        window.location = "/admin";
+    }
+
+
+</script>
+</body>
+</html>

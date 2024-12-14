@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<th:block th:replace="~{fragments/header :: commonHead}"></th:block>
+
+<body>
+<div class="navigation-bar">
+    <nav>
+        <ul class="nav nav-tabs" id="Tabs" role="tablist">
+            <li class="nav-item"><a th:href="@{/}" class="nav-link active" role="tab">
+                <i class="bi bi-card-list"></i>
+                Главная страница
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/dealershops}" class="nav-link " aria-selected="true" role="tab">
+                <i class="bi bi-buildings"></i>
+                Магазины
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/carbrand_plans}" class="nav-link" aria-selected="false" role="tab">
+                <i class="bi bi-car-front"></i>
+                Марка автомобилей
+            </a>
+            </li>
+            <li sec:authorize="hasRole('ADMIN')" class="nav-item"><a th:href="@{/admin}" class="nav-link"
+                                                                     aria-selected="false" role="tab">
+                <i class="bi bi-gear"></i>
+                Админ Панель
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/login}" class="nav-link" aria-selected="false" role="tab">Выйти</a></li>
+        </ul>
+    </nav>
+</div>
+<h1>Диллерский магазин</h1>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="search-bar">
+            <form th:action="@{/}" class="form-inline" style="display: flex; justify-content: center;">
+                <input type="text" class="search-bar input" name="keyword" id="keyword" size="50" th:value="${keyword}"
+                       placeholder="Поиск..." >
+                <button type="submit" class="search-bar button"><i class="bi bi-search me-2"></i>Поиск</button>
+                <button type="button" class="search-bar button" onclick="clearSearch()"><i class="bi bi-stars me-2"></i>Очистить</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-wrapper">
+        <!-- Таблица -->
+        <table id="CarTable" class="table">
+            <thead>
+            <tr>
+                <th>
+                    <i class="bi bi-file-person"></i>
+                    ФИО сотрудника
+                </th>
+                <th>
+                    <i class="bi bi-buildings"></i>
+                    Диллерский салон
+                </th>
+                <th>
+                    <i class="bi bi-car-front"></i>
+                    Марка автомобиля
+                </th>
+                <th>
+                    <i class="bi bi-calendar-event"></i>
+                    Дата поступления
+                </th>
+                <th>
+                    <i class="bi bi-calendar-check"></i>
+                    Дата продажи
+                </th>
+                <th>
+                    <i class="bi bi-calendar-range"></i>
+                    Дней в наличии
+                </th>
+                <th sec:authorize="hasRole('ADMIN')" style="text-align: center;">
+                    <i class="bi bi-database-gear"></i>
+                    Действия
+                </th>
+            </tr>
+            </thead>
+            <tbody id="CarTableBody">
+            <tr th:each="carbrand : ${carbrands}">
+                <td th:text="${carbrand.fio}"></td>
+                <td>
+                    <span th:if="${carbrand.dealershop != null}" th:text="${carbrand.dealershop.name}"></span>
+                    <span th:if="${carbrand.dealershop == null}">
+                        <i class="bi bi-dash"></i>
+                    </span>
+                </td>
+                <td>
+                    <span th:if="${carbrand.carbrandPlan != null}" th:text="${carbrand.carbrandPlan.name}"></span>
+                    <span th:if="${carbrand.carbrandPlan == null}">
+                        <i class="bi bi-dash"></i>
+                    </span>
+                </td>
+                <td th:text="${carbrand.start_date}"></td>
+                <td>
+                    <span th:if="${carbrand.end_date}" th:text="${carbrand.end_date}"></span>
+                    <span th:if="${carbrand.end_date == null}">
+                    <i class="bi bi-dash"></i>
+                    </span>
+                </td>
+
+                <td class="days-remaining"></td>
+                <td sec:authorize="hasRole('ADMIN')" style="text-align: center;">
+                    <button
+                            type="button"
+                            class="btn action-btn edit-btn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#CarBrandModal"
+                            th:data-id="${carbrand.id}"
+                            th:data-key="${carbrand.fio}"
+                            th:data-dealershop-id="${carbrand.dealershop != null ? carbrand.dealershop.id : ''}"
+                            th:data-plan-id="${carbrand.carbrandPlan != null ? carbrand.carbrandPlan.id : ''}"
+                            th:data-start-date="${carbrand.start_date}"
+                            th:data-end-date="${carbrand.end_date}">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <a class="btn action-btn delete-btn"
+                       th:href="@{/delete/{id}(id=${carbrand.id})}">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                </td>
+
+            </tr>
+            </tbody>
+
+        </table>
+        <div class="counter-container">
+            <p id="rowCounter" style="font-size: 14px; color: #333333;"></p>
+        </div>
+
+        <!-- Пагинация и кнопка добавления на одном уровне -->
+        <div sec:authorize="hasRole('ADMIN')" class="pagination-add-container">
+            <div id="pagination" class="pagination-container"></div>
+            <button class="add-button" data-bs-toggle="modal" data-bs-target="#CarBrandModal"><i class="bi bi-file-plus me-2"></i>Добавить</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="CarBrandModal" tabindex="-1" aria-labelledby="CarBrandModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form th:action="@{/save}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="CarBrandModalLabel">Добавить/Редактировать запись</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="carbrandKey" class="form-label"><i class="bi bi-file-person me-2"></i>ФИО Сотрудника</label>
+                        <input type="text" class="form-control" id="carbrandKey" name="fio" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dealershopId" class="form-label"><i class="bi bi-buildings me-2"></i>Магазин</label>
+                        <select class="form-select" id="dealershopId" name="dealershopId" required>
+                            <option value="" disabled selected>Выберите магазин</option>
+                            <option th:each="dealershop : ${dealershops}" th:value="${dealershop.id}"
+                                    th:text="${dealershop.name}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="carbrandPlanId" class="form-label"><i class="bi bi-car-front me-2"></i>Марка авто</label>
+                        <select class="form-select" id="carbrandPlanId" name="carbrandPlanId" required>
+                            <option value="" disabled selected>Выберите авто</option>
+                            <option th:each="plan : ${carbrandPlans}" th:value="${plan.id}"
+                                    th:text="${plan.name}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="startDate" class="form-label"><i class="bi bi-calendar-event me-2"></i>Дата поступления</label>
+                        <input type="date" class="form-control" id="startDate" name="start_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endDate" class="form-label"><i class="bi bi-calendar-check me-2"></i>Дата продажи</label>
+                        <input type="date" class="form-control" id="endDate" name="end_date">
+                    </div>
+                    <input type="hidden" name="id" id="carbrandId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let editButtons = document.querySelectorAll('button[data-bs-toggle="modal"][data-bs-target="#CarBrandModal"]');
+        editButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                let id = button.getAttribute('data-id');
+                let key = button.getAttribute('data-key');
+                let dealershopId = button.getAttribute('data-dealershop-id');
+                let planId = button.getAttribute('data-plan-id');
+                let startDate = button.getAttribute('data-start-date');
+                let endDate = button.getAttribute('data-end-date');
+                let arrived = button.getAttribute('data-arrived') === 'true';
+                let extended = button.getAttribute('data-extended') === 'true';
+
+                // Устанавливаем значения в поля формы
+                document.getElementById('carbrandId').value = id;
+                document.getElementById('carbrandKey').value = key;
+                document.getElementById('dealershopId').value = dealershopId;
+                document.getElementById('carbrandPlanId').value = planId;
+                document.getElementById('startDate').value = startDate;
+                document.getElementById('endDate').value = endDate;
+                document.getElementById('arrived').checked = arrived;
+                document.getElementById('extended').checked = extended;
+            });
+        });
+    });
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const rows = document.querySelectorAll('#CarTable tbody tr');
+        rows.forEach(row => {
+            const StartDateText = row.querySelector('td:nth-child(4)').textContent.trim(); // Дата поступления
+            const EndDateText = row.querySelector('td:nth-child(5)').textContent.trim();   // Дата продажи
+            const daysRemainingCell = row.querySelector('.days-remaining');              // Ячейка "Осталось дней"
+
+            if (StartDateText) {
+                const startDate = new Date(StartDateText);
+                const currentDate = new Date();
+
+                if (EndDateText) {
+                    // Если указана дата продажи, меняем на "Продано"
+                    daysRemainingCell.textContent = 'Продано';
+                } else {
+                    // Если даты продажи нет, вычисляем количество дней
+                    const diffTime = currentDate - startDate;
+                    if (diffTime > 0) {
+                        daysRemainingCell.textContent = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    } else {
+                        daysRemainingCell.textContent = 'Не указана дата продажи';
+                    }
+                }
+            } else {
+                // Если нет даты поступления
+                daysRemainingCell.textContent = 'Не указана дата поступления';
+            }
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const rowsPerPage = 5;
+        const tableBody = document.getElementById("CarTableBody");
+        const pagination = document.getElementById("pagination");
+        const rows = Array.from(tableBody.querySelectorAll("tr"));
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+        function displayPage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+
+            rows.forEach((row, index) => {
+                row.style.display = index >= start && index < end ? "" : "none";
+            });
+
+            Array.from(pagination.children).forEach((button, index) => {
+                button.classList.toggle("active", index === page - 1);
+            });
+        }
+
+        function createPaginationButtons() {
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement("button");
+                button.textContent = i;
+                button.addEventListener("click", () => displayPage(i));
+                pagination.appendChild(button);
+            }
+        }
+
+        createPaginationButtons();
+        displayPage(1);
+    });
+    function clearSearch() {
+        window.location = "/";
+    }
+</script>
+</body>
+</html>

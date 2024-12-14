@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
+<th:block th:replace="fragments/header :: commonHead"></th:block>
+
+<body>
+<div class="navigation-bar">
+    <nav>
+        <ul class="nav nav-tabs" id="Tabs" role="tablist">
+            <li class="nav-item"><a th:href="@{/}" class="nav-link" role="tab">
+                <i class="bi bi-card-list"></i>
+                Главная страница
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/dealershops}" class="nav-link active" aria-selected="true" role="tab">
+                <i class="bi bi-buildings"></i>
+                Магазины
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/carbrand_plans}" class="nav-link" aria-selected="false" role="tab">
+                <i class="bi bi-car-front"></i>
+                Марка автомобиля
+            </a>
+            </li>
+            <li sec:authorize="hasRole('ADMIN')" class="nav-item"><a th:href="@{/admin}" class="nav-link"
+                                                                     aria-selected="false" role="tab">
+                <i class="bi bi-gear"></i>
+                Админ Панель
+            </a>
+            </li>
+            <li class="nav-item"><a th:href="@{/login}" class="nav-link" aria-selected="false" role="tab">Выйти</a></li>
+        </ul>
+    </nav>
+</div>
+
+<h1>Магазины</h1>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="search-bar">
+            <form th:action="@{/dealershops}" class="form-inline" style="display: flex; justify-content: center;">
+                <input type="text" class="search-bar input" name="keyword" id="keyword" size="50" th:value="${keyword}"
+                       placeholder="Поиск..." >
+                <button type="submit" class="search-bar button"><i class="bi bi-search me-2"></i>Поиск</button>
+                <button type="button" class="search-bar button" onclick="clearSearch()"><i class="bi bi-stars me-2"></i>Очистить</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <table id="CarTable" class="table">
+        <thead>
+        <tr>
+            <th>
+                <i class="bi bi-buildings"></i>
+                Название магазина
+            </th>
+            <th>
+                <i class="bi bi-geo"></i>
+                Адрес
+            </th>
+            <th>
+                <i class="bi bi-person-badge"></i>
+                Контакт
+            </th>
+            <th>
+                <i class="bi bi-file-earmark-text"></i>
+                Описание
+            </th>
+            <th sec:authorize="hasRole('ADMIN')">
+                <i class="bi bi-database-gear"></i>
+                Действия
+            </th>
+        </tr>
+        </thead>
+        <tbody id="DealershopTableBody">
+        <tr th:each="dealershop : ${dealershops}">
+            <td class="name-cell" th:text="${dealershop.name}"></td>
+            <td class="address-cell" th:text="${dealershop.address}"></td>
+            <td class="contact-cell" th:text="${dealershop.contact}"></td>
+            <td class="description-cell" th:text="${dealershop.descr}"></td>
+            <td sec:authorize="hasRole('ADMIN')">
+                <button
+                        type="button"
+                        class="btn action-btn edit-btn"
+                        data-bs-toggle="modal" data-bs-target="#dealershopModal"
+                        th:data-id="${dealershop.id}"
+                        th:data-name="${dealershop.name}"
+                        th:data-address="${dealershop.address}"
+                        th:data-contact="${dealershop.contact}"
+                        th:data-description="${dealershop.descr}">
+                    <i class="fas fa-pencil-alt"></i>
+                </button>
+                <a class="btn action-btn delete-btn"
+                   th:href="@{dealershops/delete/{id}(id=${dealershop.id})}">
+                    <i class="fas fa-trash-alt"></i>
+                </a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="counter-container">
+        <p id="rowCounter" style="font-size: 14px; color: #333333;"></p>
+    </div>
+    <div sec:authorize="hasRole('ADMIN')" class="pagination-add-container">
+        <div id="pagination" class="pagination-container"></div>
+        <button class="add-button" data-bs-toggle="modal" data-bs-target="#dealershopModal"><i class="bi bi-file-plus me-2"></i>Добавить</button>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования магазина -->
+<div class="modal fade" id="dealershopModal" tabindex="-1" aria-labelledby="dealershopModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form th:action="@{/dealershops/save}" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dealershopModalLabel">Добавить/Редактировать магазин</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label"><i class="bi bi-buildings me-2"></i>Название магазина</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               th:value="${dealershop.name}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label"><i class="bi bi-geo me-2"></i>Адрес</label>
+                        <input type="text" class="form-control" id="address" name="address"
+                               th:value="${dealershop.address}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact" class="form-label"><i class="bi bi-person-badge me-2"></i>Контакт</label>
+                        <input type="text" class="form-control" id="contact" name="contact"
+                               th:value="${dealershop.contact}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descr" class="form-label"><i class="bi bi-file-earmark-text me-2"></i>Описание</label>
+                        <textarea class="form-control" id="descr" name="descr" rows="3" required
+                                  th:text="${dealershop.descr}"></textarea>
+                    </div>
+                    <input type="hidden" name="id" th:value="${dealershop.id}">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let editButtons = document.querySelectorAll('button[data-bs-toggle="modal"][data-bs-target="#dealershopModal"]');
+    editButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            let id = button.getAttribute('data-id');
+            let name = button.getAttribute('data-name');
+            let address = button.getAttribute('data-address');
+            let contact = button.getAttribute('data-contact');
+            let description = button.getAttribute('data-description');
+
+            document.getElementById('name').value = name;
+            document.getElementById('address').value = address;
+            document.getElementById('contact').value = contact;
+            document.getElementById('descr').value = description;
+            document.querySelector('input[name="id"]').value = id;
+        });
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const rowsPerPage = 5;
+        const tableBody = document.getElementById("DealershopTableBody");
+        const pagination = document.getElementById("pagination");
+        const rows = Array.from(tableBody.querySelectorAll("tr"));
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+        function displayPage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+
+            rows.forEach((row, index) => {
+                row.style.display = index >= start && index < end ? "" : "none";
+            });
+
+            Array.from(pagination.children).forEach((button, index) => {
+                button.classList.toggle("active", index === page - 1);
+            });
+        }
+
+        function createPaginationButtons() {
+            for (let i = 1; i <= totalPages; i++) {
+                const button = document.createElement("button");
+                button.textContent = i;
+                button.addEventListener("click", () => displayPage(i));
+                pagination.appendChild(button);
+            }
+        }
+
+        createPaginationButtons();
+        displayPage(1);
+    });
+    function clearSearch() {
+        window.location = "/dealershops";
+    }
+</script>
+</body>
+</html>
